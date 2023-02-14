@@ -7,7 +7,7 @@ Storj-Media-Kit files are from here: https://www.storj.io/media-kit (These graph
 
 A simple shell-script-collection to set up a STORJ-Storagenode according to official requirements in a simple way.
 
-This is a collection of scripts for creating a Storj storagenode according to official criteria, either via bash in the shell or with graphical web input mask.
+This is a collection of scripts for creating a Storj storagenode according to official criteria, either via bash in the shell or with graphical web input mask and Shell in a Box.
 
 The current state is that the scripts have not yet been fully translated to English. (The outputs are in German!)
 The scripts should work as far as possible under DEBIAN (10+), but if you notice a malfunction of any kind, please contact me.
