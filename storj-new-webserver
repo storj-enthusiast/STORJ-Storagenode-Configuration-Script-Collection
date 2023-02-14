@@ -1,0 +1,357 @@
+#!/bin/bash
+
+ca=""
+id=""
+nodecount=""
+satellites=""
+
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+NC='\033[0m'
+
+check_if_root(){
+  if [ "$EUID" -ne 0 ]
+    then
+      printf "${RED}Erhöhte Nutzerrechte erforderlich!${NC}\n" && exit 1
+  else
+    printf "${GREEN}Benutzer ist root, Skript kann gestartet werden!${NC}\n"
+  fi
+}
+
+set_parameters(){
+  if source /var/www/html/storj_variables
+    then
+      printf "${GREEN}Die Variablen vom Formular wurden eingelesen!${NC}\n"
+  else
+    printf "${RED}Die Variabeln vom Formular konnten nicht eingelesen werden, Skript wird beendet!${NC}\n" && exit 1
+  fi
+  printf "\n${YELLOW}Deine Eingaben: ${NC}\n \
+  Der Storj-Speicherpfad (NICHT die Identität!) lautet: ${directory}\n \
+  Die Storagenodekapazität beträgt: ${storage}\n \
+  Die Ethereum-Wallet (= STORJ-Wallet) lautet: ${wallet}\n \
+  Die E-Mail-Adresse lautet: ${email}\n \
+  Der TCP-Port lautet: ${porttcp}\n \
+  Der UDP-Port lautet: ${portudp}\n \
+  Der Webserver-Port lautet: ${portweb}\n \
+  Der Status vom zksyc-opt-in lautet: ${zkoptin}\n \
+  Der Status vom Watchtower lautet: ${watchtower}\n \
+  US1: ${US1}\n \
+  EU1: ${EU1}\n \
+  AP1: ${AP1}\n \
+  SALTLAKE: ${SALTLAKE}\n \
+  US2: ${US2}\n \
+  EUNORTH: ${EUNORTH}\n"
+}
+
+set_satellites(){
+  if [ "$US1" = "on" ]
+    then
+      satellites="12EayRS2V1kEsWESU9QMRseFhdxYxKicsiFmxrsLZHeLUtdps3S," 
+  fi
+
+  if [ "$EU1" = "on" ]
+    then
+      satellites+="12L9ZFwhzVpuEKMUNUqkaTLGzwY9G24tbiigLiXpmZWKwmcNDDs,"
+  fi
+
+  if [ "$AP1" = "on" ]
+    then
+      satellites+="121RTSDpyNZVcEU84Ticf2L1ntiuUimbWgfATz21tuvgk3vzoA6,"
+  fi
+
+  if [ "$SALTLAKE" = "on" ]
+    then
+      satellites+="1wFTAgs9DP5RSnCqKV1eLf6N9wtk4EAtmN5DpSxcs8EjT69tGE,"
+  fi
+
+  if [ "$US2" = "on" ]
+    then
+      satellites+="12tRQrMTWUWwzwGh18i7Fqs67kmdhH9t6aToeiwbo5mfS2rUmo,"
+  fi
+
+  if [ "$EUNORTH" = "on" ]
+    then
+      satellites+="12rfG3sh9NCWiX3ivPjq2HtdLmbqCrvHVEzJubnzFzosMuawymB,"
+  fi
+}
+
+check_identity_ca(){
+  printf "${YELLOW}Überprüfung Identität 1/2${NC}\n"
+  ca=$(grep -c BEGIN $(pwd)/storj/identity/storagenode-"$nmbr"/storagenode/ca.cert)
+}
+
+check_identity_id(){
+  printf "${YELLOW}Überprüfung Identität 2/2${NC}\n"
+  id=$(grep -c BEGIN $(pwd)/storj/identity/storagenode-"$nmbr"/storagenode/identity.cert)
+}
+
+install_related_packages(){
+  printf "${YELLOW}Installieren von Abhängigkeiten${NC}\n"
+  if ! apt install -y curl unzip apt-transport-https ca-certificates gnupg>/dev/null 2>&1
+    then
+      printf "${RED}Pakete curl, unzip, apt-transport-https, ca-certificates und gnupg konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
+  fi
+}
+
+purge_docker(){
+  printf "${YELLOW}Deinstallieren alter Docker-Installationen${NC}\n"
+  docker_related_programs=("docker" "docker.io" "containerd" "runc" "docker-engine")
+  for i in "${docker_related_programs[@]}"; do
+    if dpkg -s "$i">/dev/null 2>&1
+      then
+        if ! apt purge -y "$i">/dev/null 2>&1
+          then
+            printf "${RED}Programm ${i} konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+        fi
+    fi
+  done
+}
+
+make_directory(){
+  if find $(pwd)/storj/identity/storagenode-"$nmbr">/dev/null 2>&1
+    then
+      printf "${GREEN}Identity-Ordner ist bereits vorhanden!${NC}\n"
+  else
+    printf "${YELLOW}Identity-Ordner ist noch nicht vorhanden, Ordner wird erstellt und anschließend wird eine neue Identität berechnet.${NC}\n"
+    mkdir -p $(pwd)/storj/identity/storagenode-"$nmbr"
+  fi
+}
+
+create_identity(){
+  printf "\n${YELLOW}Erstellung Storj-Identität${NC}\n"
+  if find /usr/local/bin/identity>/dev/null 2>&1
+    then
+      printf "${GREEN}Identity Binary ist bereits vorhanden, fahre mit Erstellung der Identität fort.${NC}\n"
+  else
+    printf "${YELLOW}Identity-Binary wird heruntergalden.${NC}\n"
+    if curl -L https://github.com/storj/storj/releases/latest/download/identity_linux_amd64.zip -o identity_linux_amd64.zip && unzip -o identity_linux_amd64.zip && chmod +x identity && mv identity /usr/local/bin/identity
+      then
+        printf "${GREEN}Identity Binary wurde erfolgreich heruntergeladen und entpackt.${NC}\n"
+      else
+        printf "${RED}Identity-Binary konnte nicht heruntergeladen werden, Skript wird abgebrochen!${NC}\n" && exit 1
+    fi
+  fi
+
+  if identity --identity-dir $(pwd)/storj/identity/storagenode-"$nmbr" --config-dir $(pwd)/storj/identity/storagenode-"$nmbr" create storagenode
+    then
+      printf "${GREEN}Identität wurde erzeugt!${NC}\n"
+  fi
+}
+
+authorize_identity(){
+  if identity --config-dir $(pwd)/storj/identity/storagenode-"$nmbr" --identity-dir $(pwd)/storj/identity/storagenode-"$nmbr" authorize storagenode "$authtoken"
+    then
+      printf "${GREEN}Deine Identität für ${NC}Storagenode-${nmbr} ${GREEN}wurde authorisiert!${NC}\n"
+  else
+    printf "${RED}Identität konnte nicht authorisiert werden, Skript wird beendet!${NC}\n" && exit 1;
+  fi
+}
+
+add_or_remove_nodes_to_watchtower(){
+  printf "${YELLOW}Füge Nodes zum Watchtower hinzu oder entferne sie${NC}\n"
+  if ! [[ -f watchtower.txt ]]
+    then
+      touch ./watchtower.txt
+  fi
+
+  if [[ "$watchtower" =~ ^[yYjJ]+$ ]]
+    then
+    if ! grep -Fxq "storagenode-${nmbr}" ./watchtower.txt
+      then
+        printf "storagenode-${nmbr}\n" >> ./watchtower.txt
+    fi
+  elif [[ "$watchtower" =~ ^[nN]?$ ]]
+    then
+      if grep -Fxq "storagenode-${nmbr}" ./watchtower.txt
+        then
+          sed -i "/storagenode-${nmbr}/d" ./watchtower.txt
+      fi
+  fi
+  nodecount="$(cat watchtower.txt | tr '\n' ' ' | sed 's/\s*$//')"
+}
+
+add_docker_apt(){
+  printf "${YELLOW}Hinzufügen des Docker-Repository${NC}\n";
+  if ! find /usr/share/keyrings/docker-archive-keyring.gpg>/dev/null 2>&1
+    then
+      if curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        then
+          printf \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian \
+          $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list>/dev/null 2>&1
+          if apt update>/dev/null 2>&1
+            then
+              printf "${GREEN}Docker Repositorys konnten zu apt hinzugefügt werden! ${NC}\n"
+          else
+            printf "${RED} Neu hinzugefügte Docker-Repositories konnten nicht aktualisiert werden, Skript wird beendet!${NC}" && exit 1
+          fi
+      else
+        printf "${RED}Docker-GPG-Key konnnte nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
+      fi
+  fi
+}
+
+install_docker(){
+  if apt install -y docker-ce docker-ce-cli containerd.io>/dev/null 2>&1
+    then
+      if ! docker rm hello-world-container && docker run --name hello-world-container hello-world && docker rm hello-world-container
+        then
+          if ! docker run --name hello-world-container hello-world && docker rm hello-world-container
+            then
+              printf "${RED} Der Container \"hello-world\" konnte nicht ausgeführt werden, Skript wird abgebrochen!${NC}\n" && exit 1
+          fi
+      fi
+  else
+    printf "{RED}Pakete docker-ce, docker-ce-cli und containerd.io konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
+  fi
+}
+
+purge_storagenode(){
+  if docker stop storagenode-"$nmbr" && docker rm storagenode-"$nmbr">/dev/null 2>&1
+    then
+      printf "${GREEN}Das Stoppen und Entfernen der alten Storagenode war erfolgreich.${NC}\n"
+  elif docker rm storagenode-"$nmbr">/dev/null 2>&1
+    then
+      printf "${GREEN}Das Stoppen und Entfernen der alten Storagenode war erfolgreich.${NC}\n"
+  elif ! docker ps -a | grep -w storagenode-"$nmbr">/dev/null 2>&1
+    then
+      printf "${YELLOW}Alter Container nicht vorhanden, fahre fort.${NC}\n"
+      return 0
+  else
+    printf "${RED}Alter Container konnte nicht entfernt werden, Skript wird abgebrochen!${NC}\n" && exit 1
+  fi
+
+}
+
+pull_storagenode(){
+  printf "${YELLOW}Hole Storj-Container${NC}\n"
+  if docker pull storjlabs/storagenode:latest
+    then
+      printf "${GREEN}Installation des Container-Images \"storagenode\" war erfolgreich!${NC}\n"
+  else
+    printf "${RED}Installation des Container-Images \"storagenode\" war nicht erfolgreich, Skript wird abgebrochen!${NC}\n" && exit 1
+  fi
+}
+
+replace_config_yaml(){
+  if find "$directory"/config.yaml>/dev/null 2>&1
+    then
+      mv "$directory"/config.yaml config.yaml.old>/dev/null 2>&1
+  else
+    return 0
+  fi
+}
+
+initial_storagenode_setup(){
+  printf "${YELLOW}Starten der ${NC}storagenode-${nmbr}\n"
+  docker run --rm -e SETUP="true" \
+    --mount type=bind,source=$(pwd)/storj/identity/storagenode-"$nmbr"/storagenode,destination=/app/identity \
+    --mount type=bind,source="$directory"/,destination=/app/config \
+    --name storagenode-"$nmbr" storjlabs/storagenode:latest
+}
+
+set_zksync(){
+  if [[ "$zkoptin" =~ ^[yYjJ]+$ ]]
+    then
+      if grep -Fxq "operator.wallet-features: [\"zksync\"]" "$directory"/config.yaml
+        then
+          printf "${YELLOW}zksync ist bereits aktiviert!${NC}\n"
+      else
+        printf "${YELLOW}Aktivieren von zksync${NC}\n"
+        sed -i 's/operator.wallet-features: ""/operator.wallet-features: ["zksync"]/' "$directory"/config.yaml
+      fi
+  elif [[ "$zkoptin" =~ ^[nN]?$ ]]
+    then
+      if grep -Fxq "operator.wallet-features: [\"zksync\"]" "$directory"/config.yaml
+        then
+          printf "${YELLOW}Deaktivieren von zksync${NC}\n"
+          sed -i 's/operator.wallet-features: ["zksync"]/operator.wallet-features: ""/' "$directory"/config.yaml
+      else
+        printf "${YELLOW}zksync ist bereits deaktiviert!${NC}\n"
+      fi
+  fi
+}
+
+purge_watchtower(){
+  if [[ "$watchtower" =~ ^[yYjJ]+$ ]]
+    then
+      if docker stop watchtower && docker rm watchtower
+        then
+          printf "${GREEN}Stoppen und Entfernen des alten Watchtowers war erfolgreich!${NC}\n"
+      elif docker rm watchtower
+        then 
+          printf "${GREEN}Entfernen des alten Watchtowers war erfolgreich!${NC}\n"
+      elif ! docker ps -a | grep -w watchtower>/dev/null 2>&1
+        then
+          printf "${YELLOW}Alter Container nicht vorhanden, fahre fort.${NC}\n"
+          return 0
+      fi
+  fi  
+}
+
+install_watchtower(){
+  if [[ "$watchtower" =~ ^[yYjJ]+$ ]]
+    then
+      printf "${YELLOW}Installieren des Watchtowers zur automatischen Aktualisierung der Node${NC}\n"
+      if docker pull storjlabs/watchtower && docker run -d --restart=always --name watchtower -v /var/run/docker.sock:/var/run/docker.sock storjlabs/watchtower "$nodecount" watchtower --stop-timeout 300s
+        then
+          printf "${GREEN}Der Watchtower-Container wurde erfolgreich installiert\!${NC}\n"
+      else
+          printf "${YELLOW}Der Watchtower-Container konnte nicht installiert werden. Fahre ohne fort.${NC}\n"
+      fi
+  elif docker ps -a | grep -w watchtower>/dev/null 2>&1
+    then
+       printf "${YELLOW}Installieren des Watchtowers zur automatischen Aktualisierung der Node${NC}\n"
+      if docker pull storjlabs/watchtower && docker run -d --restart=always --name watchtower -v /var/run/docker.sock:/var/run/docker.sock storjlabs/watchtower "$nodecount" watchtower --stop-timeout 300s
+        then
+          printf "${GREEN}Der Watchtower-Container wurde erfolgreich installiert\!${NC}\n"
+      else
+          printf "${YELLOW}Der Watchtower-Container konnte nicht installiert werden. Fahre ohne fort.${NC}\n"
+      fi
+  else
+    printf "${YELLOW}Der Watchtower-Container wird nicht installiert, da nicht gewünscht.${NC}\n"
+  fi
+}
+
+set_udp_buffersize(){
+  if grep -Fxq "net.core.rmem_max=2500000" /etc/sysctl.conf
+    then
+      printf "${GREEN}UDP-Buffersize ist bereits angepasst!${NC}\n"
+  else
+    printf "${YELLOW}Passe UDP-Buffer-Größe permanent an${NC}\n";
+    printf "net.core.rmem_max=2500000" >> /etc/sysctl.conf
+    sysctl -w net.core.rmem_max=2500000
+  fi
+}
+
+final_storagenode_setup(){
+  docker run -v -it -d --restart unless-stopped --stop-timeout 300 \
+   -p "$porttcp":28967/tcp \
+   -p "$portudp":28967/udp \
+   -p "$portweb":14002 \
+   -e WALLET="$wallet" \
+   -e EMAIL="$email" \
+   -e ADDRESS="$address":"$porttcp" \
+   -e STORAGE="$storage" \
+   -e SAT_ID="${satellites%?}" \
+   --mount type=bind,source=$(pwd)/storj/identity/storagenode-"$nmbr"/storagenode,destination=/app/identity \
+   --mount type=bind,source="$directory"/,destination=/app/config --name storagenode-"$nmbr" storjlabs/storagenode:latest
+}
+
+set_finished(){
+  echo OK>/var/www/html/finished
+}
+
+main(){
+  check_if_root && set_parameters && set_satellites && check_identity_ca && check_identity_id
+
+  if [ "$ca" = "2" ] && [ "$id" = "3" ]
+    then
+      install_related_packages && add_or_remove_nodes_to_watchtower && purge_docker && add_docker_apt && install_docker && pull_storagenode && purge_storagenode && replace_config_yaml && initial_storagenode_setup && set_zksync && purge_watchtower && install_watchtower && set_udp_buffersize && final_storagenode_setup && set_finished && exit 0
+  else
+    install_related_packages && make_directory && create_identity && authorize_identity && check_identity_ca && check_identity_id && add_or_remove_nodes_to_watchtower && purge_docker && add_docker_apt && install_docker && pull_storagenode && purge_storagenode && replace_config_yaml && initial_storagenode_setup && set_zksync && purge_watchtower && install_watchtower && set_udp_buffersize && final_storagenode_setup && set_finished && exit 0
+  fi
+}
+
+main

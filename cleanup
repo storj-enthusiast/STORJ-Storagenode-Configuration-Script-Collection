@@ -1,0 +1,46 @@
+#!/bin/bash
+
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+NC='\033[0m'
+
+stop_disable_nginx(){
+  printf "${YELLOW}Stoppe und deaktiviere Nginx${NC}\n"
+  if systemctl stop nginx && systemctl disable nginx
+    then
+      printf "${GREEN}Nginx wurde erfolgreich gestoppt und deaktiviert!${NC}\n"
+  else
+    printf "${RED}Nignx konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+stop_disable_shellinabox(){
+  printf "${YELLOW}Stoppe und deaktiviere ShellInABox${NC}\n"
+  if pkill -f shellinaboxd
+    then
+      if systemctl stop shellinabox && systemctl disable shellinabox
+        then
+          printf "${GREEN}ShellInABox wurde erfolgreich gestoppt und deaktiviert!${NC}\n"
+      else
+        printf "${RED}ShellInABox konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
+      fi
+  else
+    printf "${RED}ShellInABox konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+remove_storj_variables(){
+  if [[ -f /var/www/html/storj_variables ]]
+    then
+      rm /var/www/html/storj_variables
+  else
+    return 0;
+  fi
+}
+
+main(){
+  stop_disable_nginx && stop_disable_shellinabox
+}
+
+main

@@ -1,0 +1,91 @@
+#!/bin/bash
+
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+NC='\033[0m'
+
+update(){
+  if apt update && apt upgrade -y
+    then
+      printf "${GREEN}Paketlisten und Pakete wurden aktualisiert!${NC}\n"
+  else
+    printf "${RED}Paketliste konnte nicht abgerufen und/ oder installiert werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+install_web_essentials(){
+  systemctl stop nginx shellinabox
+
+  apt purge -y nginx-light nginx-common php php-common php-fpm shellinabox screen
+
+  if apt install -y nginx-light php php-common php-fpm shellinabox screen
+    then
+      printf "${GREEN}Paketlisten und Pakete wurden aktualisiert!${NC}\n"
+  else
+    printf "${RED}Die Pakete nginx-light, php, shellinabox und screen konnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+check_nginx(){
+  if systemctl is-active --quiet nginx
+    then
+      if systemctl stop nginx
+        then
+          printf "${GREEN}Nginx wurde korrekt installiert und wurde zeitweise zur Rekonfiguration gestoppt.${NC}\n"
+      else
+        printf "${RED}Nginx konnte nicht gestoppt werden, beende Skript!${NC}\n" && exit 1
+      fi
+  else
+    printf "${RED}Nginx wurde nicht korrekt installiert, purge nginx-light und beende Skript!${NC}\n" && apt remove -y nginx-light && exit 1
+  fi
+}
+
+copy_formular_to_var(){
+  if cp ./web/index.php ./web/storj_variables.php ./web/finished.php ./web/storj-dark.png ./web/storj-light.png ./web/storj-favicon.png /var/www/html/ && chown -R www-data:www-data /var/www/html/
+    then
+      > /var/www/html/finished
+      printf "${GREEN}Das Webformular wurde erfolgreich nach /var/www/html kopiert${NC}\n"
+  else
+    printf "${RED}Das Webformular konnte nicht nach /var/www/html kopiert werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+change_default_conf(){
+  mv /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/default.old
+
+  if cp ./web/new-default /etc/nginx/sites-enabled/default
+    then
+      printf "${GREEN}Die neue nginx-Config wurde eingefügt.${NC}\n"
+      if systemctl start nginx
+        then
+          printf "${GREEN}Nginx konnte gestartet werden.${NC}\n"
+      else
+        printf "${RED}Nginx konnte nicht gestartet werden, beende Skript!${NC}\n" && exit 1
+      fi
+  else
+    printf "${RED}Die neue nginx-Config konnte nicht eingefügt werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+configure_shellinabox(){
+  if systemctl disable shellinabox && systemctl stop shellinabox
+    then
+      pkill -f shellinaboxd
+      printf "${GREEN}Der shellinabox-Service wurde erfolgreich gestoppt.${NC}\n"
+      if shellinaboxd -b -p 4200 -m '*' --disable-ssl --css /etc/shellinabox/options-available/00_White\ On\ Black.css
+        then
+          printf "${YELLOW}Das Webformular ist jetzt unter folgender Adresse erreichbar: http://`hostname -I | awk '{ print $1 }'`:8080${NC}\n"
+      else
+        printf "${RED}Shellinabox konnte nicht gestartet werden, beende Skript!${NC}\n" && exit 1
+      fi
+  else
+    printf "${RED}Shellinabox konnte nicht gestoppt werden, beende Skript!${NC}\n" && exit 1
+  fi
+}
+
+main(){
+  update && install_web_essentials && check_nginx && copy_formular_to_var && change_default_conf && configure_shellinabox
+}
+
+main
