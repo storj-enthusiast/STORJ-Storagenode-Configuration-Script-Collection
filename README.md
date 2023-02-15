@@ -1,7 +1,7 @@
 # STORJ-Storagenode-Configuration-Script-Collection
 
-![grafik](https://user-images.githubusercontent.com/125383356/218795402-0847ffbe-e132-4e57-aacc-fef97e97d6bd.png)
-![grafik](https://user-images.githubusercontent.com/125383356/218795268-2a33ede8-8c52-4cb6-bec7-3ab80d86ae30.png)
+![grafik](https://user-images.githubusercontent.com/125383356/219098830-edfea5b3-1f3e-43d6-aac1-7b34a5d0c0fd.png)
+![grafik](https://user-images.githubusercontent.com/125383356/219098914-98d1cd30-ef72-4f4f-ba76-cb82ef809346.png)
 
 Storj-Media-Kit files are from here: https://www.storj.io/media-kit (These graphics are not necessary for the use of the scripts!)
 
