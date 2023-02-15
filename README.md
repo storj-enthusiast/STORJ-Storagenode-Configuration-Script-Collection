@@ -3,8 +3,6 @@
 ![grafik](https://user-images.githubusercontent.com/125383356/219098830-edfea5b3-1f3e-43d6-aac1-7b34a5d0c0fd.png)
 ![grafik](https://user-images.githubusercontent.com/125383356/219098914-98d1cd30-ef72-4f4f-ba76-cb82ef809346.png)
 
-Storj-Media-Kit files are from here: https://www.storj.io/media-kit (These graphics are not necessary for the use of the scripts!)
-
 A simple shell-script-collection to set up a STORJ-Storagenode according to official requirements in a simple way.
 
 This is a collection of scripts for creating a Storj storagenode according to official criteria, either via bash in the shell or with graphical web input mask and Shell in a Box.
