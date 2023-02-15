@@ -42,7 +42,7 @@ check_nginx(){
 }
 
 copy_formular_to_var(){
-  if cp ./web/index.php ./web/storj_variables.php ./web/finished.php ./web/storj-dark.png ./web/storj-light.png ./web/storj-favicon.png /var/www/html/ && chown -R www-data:www-data /var/www/html/
+  if cp ./web/index.php ./web/storj_variables.php ./web/finished.php /var/www/html/ && chown -R www-data:www-data /var/www/html/
     then
       > /var/www/html/finished
       printf "${GREEN}Das Webformular wurde erfolgreich nach /var/www/html kopiert${NC}\n"
