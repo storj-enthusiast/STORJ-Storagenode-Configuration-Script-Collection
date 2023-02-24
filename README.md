@@ -8,7 +8,7 @@ A simple shell-script-collection to set up a STORJ-Storagenode according to offi
 This is a collection of scripts for creating a Storj storagenode according to official criteria, either via bash in the shell or with graphical web input mask and Shell in a Box.
 
 The current state is that the scripts have not yet been fully translated to English. (The outputs are in German!)
-The scripts should work as far as possible under DEBIAN (10+), but if you notice a malfunction of any kind, please contact me.
+The scripts should work as far as possible under DEBIAN (10+) AND UBUNTU (22.04), but if you notice a malfunction of any kind, please contact me.
 
 The only goal of the project was to automate and simplify the storagenode creation. I'm forgiven if the code quality isn't too good, I'm not a professional programmer and just wanted to show herewith a kind of "proof of concept" how it could be done.
 
