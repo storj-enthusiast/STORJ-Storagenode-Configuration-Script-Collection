@@ -57,7 +57,7 @@ server {
 	#
 	#	# With php-fpm (or other unix sockets):
 		root /var/www/html;
-		fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+		fastcgi_pass unix:/run/php/php-fpm.sock;
 		fastcgi_index index.php;
 	#	include fastcgi_params;
 		include fastcgi.conf;
