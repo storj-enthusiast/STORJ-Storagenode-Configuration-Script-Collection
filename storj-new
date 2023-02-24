@@ -189,12 +189,12 @@ add_or_remove_nodes_to_watchtower(){
 
 add_docker_apt(){
   printf "${YELLOW}Hinzufügen des Docker-Repository${NC}\n";
-  if ! find /usr/share/keyrings/docker-archive-keyring.gpg>/dev/null 2>&1
+  if ! [[ -f /usr/share/keyrings/docker-archive-keyring.gpg ]] 
     then
       if curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
         then
           printf \
-          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$(lsb_release -i | awk '{print tolower($3)}') \
           $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list>/dev/null 2>&1
           if apt update>/dev/null 2>&1
             then
@@ -219,7 +219,7 @@ install_docker(){
           fi
       fi
   else
-    printf "{RED}Pakete docker-ce, docker-ce-cli und containerd.io konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
+    printf "${RED}Pakete docker-ce, docker-ce-cli und containerd.io konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
   fi
 }
 

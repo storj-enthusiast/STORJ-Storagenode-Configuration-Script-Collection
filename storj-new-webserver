@@ -173,12 +173,12 @@ add_or_remove_nodes_to_watchtower(){
 
 add_docker_apt(){
   printf "${YELLOW}Hinzufügen des Docker-Repository${NC}\n";
-  if ! find /usr/share/keyrings/docker-archive-keyring.gpg>/dev/null 2>&1
+  if ! [[ -f /usr/share/keyrings/docker-archive-keyring.gpg ]] 
     then
       if curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
         then
           printf \
-          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$(lsb_release -i | awk '{print tolower($3)}') \
           $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list>/dev/null 2>&1
           if apt update>/dev/null 2>&1
             then
@@ -203,7 +203,7 @@ install_docker(){
           fi
       fi
   else
-    printf "{RED}Pakete docker-ce, docker-ce-cli und containerd.io konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
+    printf "${RED}Pakete docker-ce, docker-ce-cli und containerd.io konnten nicht installiert werden, Skript wird abgebrochen!${NC}\n" && exit 1
   fi
 }
 
@@ -252,7 +252,7 @@ initial_storagenode_setup(){
 }
 
 set_zksync(){
-  if [[ "$zkoptin" =~ ^[yYjJ]+$ ]]
+  if [ "$zkoptin" = "on" ]
     then
       if grep -Fxq "operator.wallet-features: [\"zksync\"]" "$directory"/config.yaml
         then
@@ -261,20 +261,19 @@ set_zksync(){
         printf "${YELLOW}Aktivieren von zksync${NC}\n"
         sed -i 's/operator.wallet-features: ""/operator.wallet-features: ["zksync"]/' "$directory"/config.yaml
       fi
-  elif [[ "$zkoptin" =~ ^[nN]?$ ]]
-    then
-      if grep -Fxq "operator.wallet-features: [\"zksync\"]" "$directory"/config.yaml
-        then
-          printf "${YELLOW}Deaktivieren von zksync${NC}\n"
-          sed -i 's/operator.wallet-features: ["zksync"]/operator.wallet-features: ""/' "$directory"/config.yaml
-      else
-        printf "${YELLOW}zksync ist bereits deaktiviert!${NC}\n"
-      fi
+  else
+    if grep -Fxq "operator.wallet-features: [\"zksync\"]" "$directory"/config.yaml
+      then
+        printf "${YELLOW}Deaktivieren von zksync${NC}\n"
+        sed -i 's/operator.wallet-features: ["zksync"]/operator.wallet-features: ""/' "$directory"/config.yaml
+    else
+      printf "${YELLOW}zksync ist bereits deaktiviert!${NC}\n"
+    fi
   fi
 }
 
 purge_watchtower(){
-  if [[ "$watchtower" =~ ^[yYjJ]+$ ]]
+  if [ "$watchtower" = "on" ]
     then
       if docker stop watchtower && docker rm watchtower
         then
@@ -291,7 +290,7 @@ purge_watchtower(){
 }
 
 install_watchtower(){
-  if [[ "$watchtower" =~ ^[yYjJ]+$ ]]
+  if [ "$watchtower" = "on" ]
     then
       printf "${YELLOW}Installieren des Watchtowers zur automatischen Aktualisierung der Node${NC}\n"
       if docker pull storjlabs/watchtower && docker run -d --restart=always --name watchtower -v /var/run/docker.sock:/var/run/docker.sock storjlabs/watchtower "$nodecount" watchtower --stop-timeout 300s

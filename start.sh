@@ -29,12 +29,15 @@ install_essentials(){
   fi
 }
 
-check_if_debian(){
-  if ! [ "$(lsb_release -i | awk '{print $3}')" = "Debian" ]
+check_if_debian_or_ubuntu(){
+  if [ "$(lsb_release -i | awk '{print $3}')" = "Debian" ]
     then
-      printf "${RED}Betriebssystem entspricht nicht Debian, Skript wird abgebrochen!${NC}\n" && exit 1
+      printf "${GREEN}Betriebssystem entspricht Debian, fahre fort.${NC}\n"
+  elif [ "$(lsb_release -i | awk '{print $3}')" = "Ubuntu" ]
+    then
+      printf "${GREEN}Betriebssystem entspricht Ubuntu, fahre fort.${NC}\n"
   else
-    printf "${GREEN}Betriebssystem entspricht Debian!${NC}\n"
+    printf "${RED}Betriebssystem entspricht nicht Debian oder Ubuntu, beende Skript!${NC}\n" && exit 1
   fi
 }
 
@@ -82,7 +85,7 @@ choose_mode(){
 }
 
 main(){
-  check_if_root && install_essentials && check_if_debian && check_all_files && make_scripts_executable && copy_scripts_to_local_bin && choose_mode
+  check_if_root && install_essentials && check_if_debian_or_ubuntu && check_all_files && make_scripts_executable && copy_scripts_to_local_bin && choose_mode
 }
 
 main

@@ -40,7 +40,7 @@ remove_storj_variables(){
 }
 
 main(){
-  stop_disable_nginx && stop_disable_shellinabox
+  stop_disable_nginx && stop_disable_shellinabox && remove_storj_variables && exit 0
 }
 
 main
