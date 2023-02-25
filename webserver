@@ -14,16 +14,30 @@ update(){
   fi
 }
 
-install_web_essentials(){
-  systemctl stop nginx shellinabox
-
-  apt purge -y nginx-light nginx-common php php-common php-fpm shellinabox screen
-
-  if apt install -y nginx-light php php-common php-fpm shellinabox screen
+purge_apache2(){
+  if dpkg -s apache2>/dev/null 2>&1
     then
-      printf "${GREEN}Paketlisten und Pakete wurden aktualisiert!${NC}\n"
+      printf "${YELLOW}Apache2 wurde als installiertes Paket auf dem Host erkannt, deinstalliere apache2.${NC}\n"
+      if apt purge -y apache2
+        then
+          printf "${GREEN}Apache2 wurde erfolgreich deinstalliert!${NC}\n"
+      else
+        printf "${RED}Apache2 konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+      fi
+  fi
+}
+
+install_web_essentials(){
+  if systemctl stop nginx shellinabox && apt purge -y nginx-light nginx-common php-fpm shellinabox
+    then
+      if apt install -y nginx-light php-fpm shellinabox
+        then
+          printf "${GREEN}Paketlisten und Pakete wurden aktualisiert!${NC}\n"
+      else
+        printf "${RED}Die Pakete nginx-light, php und shellinabox konnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
+      fi
   else
-    printf "${RED}Die Pakete nginx-light, php, shellinabox und screen konnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
+    printf "${RED}Die Pakete nginx-light, php und shellinaboxkonnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
   fi
 }
 
@@ -37,7 +51,7 @@ check_nginx(){
         printf "${RED}Nginx konnte nicht gestoppt werden, beende Skript!${NC}\n" && exit 1
       fi
   else
-    printf "${RED}Nginx wurde nicht korrekt installiert, purge nginx-light und beende Skript!${NC}\n" && apt remove -y nginx-light && exit 1
+    printf "${RED}Nginx wurde nicht korrekt installiert, purge nginx-light und beende Skript!${NC}\n" && apt purge -y nginx-light && exit 1
   fi
 }
 
@@ -85,7 +99,7 @@ configure_shellinabox(){
 }
 
 main(){
-  update && install_web_essentials && check_nginx && copy_formular_to_var && change_default_conf && configure_shellinabox
+  update && purge_apache2 && install_web_essentials && check_nginx && copy_formular_to_var && change_default_conf && configure_shellinabox
 }
 
 main

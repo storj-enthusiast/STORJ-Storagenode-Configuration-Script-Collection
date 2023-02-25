@@ -244,11 +244,21 @@ replace_config_yaml(){
 }
 
 initial_storagenode_setup(){
-  printf "${YELLOW}Starten der ${NC}storagenode-${nmbr}\n"
-  docker run --rm -e SETUP="true" \
-    --mount type=bind,source=$(pwd)/storj/identity/storagenode-"$nmbr"/storagenode,destination=/app/identity \
-    --mount type=bind,source="$directory"/,destination=/app/config \
-    --name storagenode-"$nmbr" storjlabs/storagenode:latest
+  if ! [[ -f $(pwd)/storj/identity/storagenode-"$nmbr"/initial_setup_done ]]
+    then
+      printf "${YELLOW}Starten der ${NC}storagenode-${nmbr}\n"
+      if docker run --rm -e SETUP="true" \
+        --mount type=bind,source=$(pwd)/storj/identity/storagenode-"$nmbr"/storagenode,destination=/app/identity \
+        --mount type=bind,source="$directory"/,destination=/app/config \
+        --name storagenode-"$nmbr" storjlabs/storagenode:latest
+        then
+          touch $(pwd)/storj/identity/storagenode-"$nmbr"/initial_setup_done
+      else
+        printf "${RED}Das initiale Setup der Storagenode war nicht erfolgreich, beende Skript!${NC}\n" && exit 1
+      fi      
+  else
+    printf "${YELLOW}Das initiale Setup der Node ist bereits erfolgt, fahre fort.${NC}\n"
+  fi
 }
 
 set_zksync(){
@@ -339,7 +349,7 @@ final_storagenode_setup(){
 }
 
 set_finished(){
-  echo OK>/var/www/html/finished
+  printf "OK">/var/www/html/finished
 }
 
 main(){

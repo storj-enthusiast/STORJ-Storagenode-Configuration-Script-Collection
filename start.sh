@@ -14,11 +14,10 @@ check_if_root(){
   fi
 }
 
-#dpkg -s lsb-release
 install_essentials(){
   if apt update && apt upgrade -y>/dev/null 2>&1
     then
-      if ! lsb_release
+      if ! dpkg -s lsb-release>/dev/null 2>&1
         then
           printf "${YELLOW}Installieren von lsb-release${NC}\n"
           if apt install -y lsb-release>/dev/null 2>&1
