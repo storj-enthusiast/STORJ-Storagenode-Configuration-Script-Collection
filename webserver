@@ -27,17 +27,64 @@ purge_apache2(){
   fi
 }
 
-install_web_essentials(){
-  if systemctl stop nginx shellinabox && apt purge -y nginx-light nginx-common php-fpm shellinabox
+stop_and_purge_nginx(){
+  if [[ dpkg -s nginx-light>/dev/null 2>&1 ]] || [[ dpkg -s nginx-common>/dev/null 2>&1 ]]
     then
-      if apt install -y nginx-light php-fpm shellinabox
+      if systemctl is-active --quiet nginx
         then
-          printf "${GREEN}Paketlisten und Pakete wurden aktualisiert!${NC}\n"
-      else
-        printf "${RED}Die Pakete nginx-light, php und shellinabox konnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
-      fi
+          if systemctl stop nginx
+            then
+              if apt purge -y nginx-light nginx-common
+                then
+                  printf "${YELLOW}Nginx-light und/ oder nginx-common wurde deinstalliert.${NC}\n"
+              else
+                printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+              fi
+      elif ! systemctl is-active --quiet nginx
+        then
+          if apt purge -y nginx-light nginx-common
+            then
+              printf "${YELLOW}Nginx-light und/ oder nginx-common wurde deinstalliert.${NC}\n"
+          else
+            printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+          fi
   else
-    printf "${RED}Die Pakete nginx-light, php und shellinaboxkonnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
+    printf "${YELLOW}Nginx-light und/ oder nginx-common sind nicht vorhanden, fahre fort.${NC}\n"
+  fi
+}
+
+stop_and_purge_shellinabox(){
+  if dpkg -s shellinabox>/dev/null 2>&1
+    then
+      if systemctl is-active --quiet shellinabox
+        then
+          if systemctl stop shellinabox
+            then
+              if apt purge -y shellinabox
+                then
+                  printf "${YELLOW}Shellinabox wurde deinstalliert.${NC}\n"
+              else
+                printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+              fi
+      elif ! systemctl is-active --quiet shellinabox
+        then
+          if apt purge -y shellinabox
+            then
+              printf "${YELLOW}Shellinabox wurde deinstalliert.${NC}\n"
+          else
+            printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+          fi
+  else
+    printf "${YELLOW}Shellinabox ist nicht vorhanden, fahre fort.${NC}\n"
+  fi
+}
+
+install_web_essentials(){
+  if apt install -y nginx-light php-fpm shellinabox
+    then
+      printf "${GREEN}Die Pakete nginx-light, php-fpm und shellinabox wurden installiert!${NC}\n"
+  else
+    printf "${RED}Die Pakete nginx-light, php-fpm und shellinabox konnten nicht installiert werden, beende Skript!${NC}\n" && exit 1
   fi
 }
 
@@ -86,7 +133,7 @@ configure_shellinabox(){
   if systemctl disable shellinabox && systemctl stop shellinabox
     then
       pkill -f shellinaboxd
-      printf "${GREEN}Der shellinabox-Service wurde erfolgreich gestoppt.${NC}\n"
+      printf "${GREEN}Der shellinabox-Service wurde erfolgreich vorübergehend gestoppt.${NC}\n"
       if shellinaboxd -b -p 4200 -m '*' --disable-ssl --css /etc/shellinabox/options-available/00_White\ On\ Black.css
         then
           printf "${YELLOW}Das Webformular ist jetzt unter folgender Adresse erreichbar: http://`hostname -I | awk '{ print $1 }'`:8080${NC}\n"
@@ -99,7 +146,7 @@ configure_shellinabox(){
 }
 
 main(){
-  update && purge_apache2 && install_web_essentials && check_nginx && copy_formular_to_var && change_default_conf && configure_shellinabox
+  update && purge_apache2 && stop_and_purge_nginx && stop_and_purge_shellinabox && install_web_essentials && check_nginx && copy_formular_to_var && change_default_conf && configure_shellinabox
 }
 
 main

@@ -5,28 +5,55 @@ YELLOW='\033[1;33m'
 RED='\033[1;31m'
 NC='\033[0m'
 
-stop_disable_nginx(){
-  printf "${YELLOW}Stoppe und deaktiviere Nginx${NC}\n"
-  if systemctl stop nginx && systemctl disable nginx
+stop_and_purge_nginx(){
+  if [[ dpkg -s nginx-light>/dev/null 2>&1 ]] || [[ dpkg -s nginx-common>/dev/null 2>&1 ]]
     then
-      printf "${GREEN}Nginx wurde erfolgreich gestoppt und deaktiviert!${NC}\n"
+      if systemctl is-active --quiet nginx
+        then
+          if systemctl stop nginx
+            then
+              if apt purge -y nginx-light nginx-common
+                then
+                  printf "${YELLOW}Nginx-light und/ oder nginx-common wurde deinstalliert.${NC}\n"
+              else
+                printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+              fi
+      elif ! systemctl is-active --quiet nginx
+        then
+          if apt purge -y nginx-light nginx-common
+            then
+              printf "${YELLOW}Nginx-light und/ oder nginx-common wurde deinstalliert.${NC}\n"
+          else
+            printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+          fi
   else
-    printf "${RED}Nignx konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
+    printf "${YELLOW}Nginx-light und/ oder nginx-common sind nicht vorhanden, fahre fort.${NC}\n"
   fi
 }
 
-stop_disable_shellinabox(){
-  printf "${YELLOW}Stoppe und deaktiviere ShellInABox${NC}\n"
-  if pkill -f shellinaboxd
+stop_and_purge_shellinabox(){
+  if dpkg -s shellinabox>/dev/null 2>&1
     then
-      if systemctl stop shellinabox && systemctl disable shellinabox
+      if systemctl is-active --quiet shellinabox
         then
-          printf "${GREEN}ShellInABox wurde erfolgreich gestoppt und deaktiviert!${NC}\n"
-      else
-        printf "${RED}ShellInABox konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
-      fi
+          if systemctl stop shellinabox
+            then
+              if apt purge -y shellinabox
+                then
+                  printf "${YELLOW}Shellinabox wurde deinstalliert.${NC}\n"
+              else
+                printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+              fi
+      elif ! systemctl is-active --quiet shellinabox
+        then
+          if apt purge -y shellinabox
+            then
+              printf "${YELLOW}Shellinabox wurde deinstalliert.${NC}\n"
+          else
+            printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
+          fi
   else
-    printf "${RED}ShellInABox konnte nicht gestoppt und/ oder deaktiviert werden, beende Skript!${NC}\n" && exit 1
+    printf "${YELLOW}Shellinabox ist nicht vorhanden, fahre fort.${NC}\n"
   fi
 }
 
@@ -40,7 +67,7 @@ remove_storj_variables(){
 }
 
 main(){
-  stop_disable_nginx && stop_disable_shellinabox && remove_storj_variables && exit 0
+  stop_and_purge_nginx && stop_and_purge_shellinabox && remove_storj_variables && exit 0
 }
 
 main

@@ -3,7 +3,6 @@
 <html>
   <head>
     <title>Storagenode-Creator</title>
-    <link rel="icon" type="image/png" href="storj-favicon.png"/>
   </head>
 <style>
 
@@ -273,12 +272,6 @@ textarea {
       <iframe id="storj_token" src="" ></iframe>
     </div>
     <div class="header" id="storj_header">
-      <div class="logo">
-        <picture>
-          <source srcset="storj-dark.png"  media="(prefers-color-scheme: dark)">
-          <img src="storj-light.png" alt="STORJ">
-        </picture>
-      </div>
     </div>
     <div id="left" class="split left">
       <h2>Gib die Parameter für die Storj-Installation an:</h2>
