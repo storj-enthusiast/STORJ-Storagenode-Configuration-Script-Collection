@@ -28,7 +28,7 @@ purge_apache2(){
 }
 
 stop_and_purge_nginx(){
-  if [[ dpkg -s nginx-light>/dev/null 2>&1 ]] || [[ dpkg -s nginx-common>/dev/null 2>&1 ]]
+  if dpkg -s nginx-light >/dev/null 2>&1 || dpkg -s nginx-common >/dev/null 2>&1
     then
       if systemctl is-active --quiet nginx
         then
@@ -40,6 +40,9 @@ stop_and_purge_nginx(){
               else
                 printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
               fi
+          else
+            printf "${RED}Nginx konnte nicht gestoppt werden, beende Skript!${NC}\n" && exit 1
+        fi
       elif ! systemctl is-active --quiet nginx
         then
           if apt purge -y nginx-light nginx-common
@@ -48,6 +51,7 @@ stop_and_purge_nginx(){
           else
             printf "${RED}Die Pakete nginx-light und/ oder nginx-common konnten nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
           fi
+      fi
   else
     printf "${YELLOW}Nginx-light und/ oder nginx-common sind nicht vorhanden, fahre fort.${NC}\n"
   fi
@@ -66,6 +70,9 @@ stop_and_purge_shellinabox(){
               else
                 printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
               fi
+          else
+            printf "${RED}Shellinabox konnte nicht gestoppt werden, beende Skript!${NC}\n" && exit 1
+          fi
       elif ! systemctl is-active --quiet shellinabox
         then
           if apt purge -y shellinabox
@@ -74,6 +81,7 @@ stop_and_purge_shellinabox(){
           else
             printf "${RED}Das Paket shellinabox konnte nicht deinstalliert werden, beende Skript!${NC}\n" && exit 1
           fi
+      fi
   else
     printf "${YELLOW}Shellinabox ist nicht vorhanden, fahre fort.${NC}\n"
   fi
