@@ -94,7 +94,7 @@ set_parameters(){
       Der TCP-Port lautet: ${porttcp}\n \
       Der UDP-Port lautet: ${portudp}\n \
       Der Webserver-Port lautet: ${portweb}\n \
-      Der Status vom zksyc-opt-in lautet: ${zkoptin}\n \
+      Der Status vom zksync-opt-in lautet: ${zkoptin}\n \
       Der Status vom Watchtower lautet: ${watchtower}\n"
 
       printf "${YELLOW}Fortfahren? Bestätige mit j oder y: ${NC}"
